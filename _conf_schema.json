@@ -1,0 +1,39 @@
+{
+    "default_skin": {
+        "description": "扫雷默认皮肤",
+        "hint": "",
+        "type": "string",
+        "options": [
+            "clone",
+            "colorsonly",
+            "hibbeler",
+            "icicle",
+            "mario",
+            "maviz",
+            "mine",
+            "narkomania",
+            "ocean",
+            "pacman",
+            "predator",
+            "scratch",
+            "symbol",
+            "unknown",
+            "vista",
+            "win98",
+            "winbw",
+            "winxp"
+        ],
+        "default": "winxp"
+    },
+    "ban_time": {
+        "description": "失败禁言时长",
+        "hint": "单位为秒，游戏失败时，将禁言玩家（有权限时才生效），此处定义禁言时长",
+        "type": "int",
+        "slider": {
+            "min": 0,
+            "max": 600,
+            "step": 1
+        },
+        "default": 300
+    }
+}
