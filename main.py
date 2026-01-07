@@ -1,5 +1,6 @@
 import asyncio
 import re
+import shutil
 from pathlib import Path
 
 from astrbot.api import logger
@@ -49,6 +50,10 @@ class MinesweeperPlugin(Star):
 
     async def terminate(self):
         """插件卸载时"""
+        # 重新创建缓存目录
+        if self.cache_dir.exists():
+            shutil.rmtree(self.cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
         logger.info("[扫雷] 插件已卸载")
 
     def _save_img_bytes(self, sid: str, img_bytes: bytes) -> str:
@@ -105,7 +110,7 @@ class MinesweeperPlugin(Star):
                     "a1 —— 挖开格子(无需前缀)\n"
                     "标雷 b2  —— 标记地雷\n"
                     "雷盘 —— 查看当前雷盘\n"
-                    "结束扫雷  —— 强制扫雷游戏\n"
+                    "结束扫雷  —— 结束扫雷游戏"
                 ),
             ]
         )

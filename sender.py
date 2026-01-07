@@ -58,7 +58,7 @@ class MessageSender:
         """
         # 仅 aiocqhttp 支持 message_id 撤回，其他按框架方法发送
         if not isinstance(event, AiocqhttpMessageEvent):
-            event.chain_result([Image.fromFileSystem(image_path)])
+            await event.send(event.chain_result([Image.fromFileSystem(image_path)]))
             return
 
         # 1. 发送新消息
