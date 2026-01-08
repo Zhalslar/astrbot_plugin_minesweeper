@@ -39,7 +39,6 @@ class MinesweeperPlugin(Star):
 
         self.skins_dir = Path(__file__).parent / "skins"
         self.skin_mgr = SkinManager(self.skins_dir)
-        asyncio.create_task(self.skin_mgr.initialize())
 
         self.font_path = Path(__file__).parent / "font.ttf"
 
@@ -49,6 +48,7 @@ class MinesweeperPlugin(Star):
 
     async def initialize(self):
         """插件加载时"""
+        await self.skin_mgr.initialize()
         logger.info("[扫雷] 插件已加载")
 
     async def terminate(self):
@@ -164,6 +164,8 @@ class MinesweeperPlugin(Star):
         msgs = []
         for pos in positions:
             result = session.open(pos)
+            if result.message:
+                msgs.append(result.message)
             if result.game_over:
                 self.game_mgr.stop(event.session_id)
                 break
