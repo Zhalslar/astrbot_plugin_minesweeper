@@ -1,12 +1,38 @@
 
 
 
+import os
 import re
+import sys
+import tkinter
 
 from astrbot.api import logger
 from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
     AiocqhttpMessageEvent,
 )
+
+
+def detect_desktop() -> bool:
+    """
+    判断是否可用 GUI（tkinter）
+    - Windows / macOS：直接尝试 tkinter
+    - Linux：先检查 DISPLAY / WAYLAND，再尝试 tkinter
+    """
+
+    # ---------- Linux 特判 ----------
+    if sys.platform.startswith("linux"):
+        if not (os.getenv("DISPLAY") or os.getenv("WAYLAND_DISPLAY")):
+            return False
+
+    # ---------- 通用兜底 ----------
+    try:
+        root = tkinter.Tk()
+        root.withdraw()
+        root.update()
+        root.destroy()
+        return True
+    except Exception:
+        return False
 
 
 def parse_position(pos: str) -> tuple[int, int] | None:

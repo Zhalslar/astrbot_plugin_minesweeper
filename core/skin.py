@@ -5,6 +5,8 @@ from pathlib import Path
 from PIL import Image
 from PIL.Image import Image as IMG
 
+from .model import GameSpec
+
 
 @dataclass
 class Skin:
@@ -44,24 +46,25 @@ class SkinManager:
 
     def get_skin_by_index(self, index: int) -> str:
         """皮肤索引 (超出范围时取第一个)"""
-        if  index < 0 or index >= len(self._skin_names):
+        if index < 0 or index >= len(self._skin_names):
             return self._skin_names[0]
         return self._skin_names[index]
+
     def get_random_skin(self) -> str:
         """随机皮肤"""
         return random.choice(self._skin_names)
 
-    def load(self, skin_name: str, rows: int, cols: int) -> Skin:
+    def load(self, skin_name: str, spec: GameSpec) -> Skin:
         """皮肤加载（带缓存）"""
-        key = (skin_name, rows, cols)
+        key = (skin_name, spec.rows, spec.cols)
         if key in self._skin_cache:
             return self._skin_cache[key]
 
-        skin = self._load_skin_impl(skin_name, rows, cols)
+        skin = self._load_skin_impl(skin_name, spec)
         self._skin_cache[key] = skin
         return skin
 
-    def _load_skin_impl(self, skin_name: str, rows: int, cols: int) -> Skin:
+    def _load_skin_impl(self, skin_name: str, spec: GameSpec) -> Skin:
         image = Image.open(self.skins_dir / f"{skin_name}.bmp").convert("RGBA")
 
         def cut(box):
@@ -72,15 +75,13 @@ class SkinManager:
         digits = [cut((i * 12, 33, i * 12 + 11, 54)) for i in range(11)]
         faces = [cut((i * 27, 55, i * 27 + 26, 81)) for i in range(5)]
 
-        background = self._build_background(image, rows, cols)
+        background = self._build_background(image, spec)
 
         return Skin(numbers, icons, digits, faces, background)
 
-    def _build_background(
-        self, image: Image.Image, rows: int, cols: int
-    ) -> Image.Image:
+    def _build_background(self, image: Image.Image, spec: GameSpec) -> Image.Image:
         """背景拼接"""
-        w, h = cols, rows
+        w, h = spec.cols, spec.rows
         background = Image.new("RGBA", (w * 16 + 24, h * 16 + 66), "silver")
 
         blocks = [
@@ -106,5 +107,3 @@ class SkinManager:
             background.paste(part, dst)
 
         return background
-
-

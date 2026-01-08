@@ -1,6 +1,7 @@
 import asyncio
 import re
 import shutil
+import threading
 from pathlib import Path
 
 from astrbot.api import logger
@@ -14,11 +15,12 @@ from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
 )
 from astrbot.core.star.star_tools import StarTools
 
-from .core.game import GameManager
-from .core.mine_sweeper import MineSweeper
+from .core.game import GameManager, MineSweeper
+from .core.gui import start_gui
+from .core.model import GameSpec, MarkResult, OpenResult
 from .core.renderer import MineSweeperRenderer
 from .core.skin import SkinManager
-from .core.utils import set_group_ban
+from .core.utils import detect_desktop, parse_position, set_group_ban
 from .sender import MessageSender
 
 
@@ -27,11 +29,11 @@ class MinesweeperPlugin(Star):
         super().__init__(context)
         self.config = config
 
-        self.level_preset = self._parse_difficulty_level(config)
+        self.level_preset: dict[str, GameSpec] = self._parse_difficulty_level(config)
         self.level_keys = list(self.level_preset.keys())
         if len(self.level_keys) == 0:
             raise ValueError("没有配置扫雷难度")
-        self.default_level = self.level_keys[0]
+        self.default_preset = self.level_preset[self.level_keys[0]]
 
         self.data_dir = StarTools.get_data_dir()
         self.cache_dir = self.data_dir / "cache"
@@ -46,8 +48,11 @@ class MinesweeperPlugin(Star):
         self._cleanup_task: asyncio.Task | None = None
         self.sender = MessageSender(config)
 
+        self.loop: asyncio.AbstractEventLoop | None = None
+
     async def initialize(self):
         """插件加载时"""
+        self.loop = asyncio.get_running_loop()
         await self.skin_mgr.initialize()
         logger.info("[扫雷] 插件已加载")
 
@@ -59,16 +64,12 @@ class MinesweeperPlugin(Star):
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         logger.info("[扫雷] 插件已卸载")
 
-    def _parse_difficulty_level(self, conf: dict) -> dict[str, dict[str, int]]:
+    def _parse_difficulty_level(self, conf: dict) -> dict[str, GameSpec]:
         result = {}
 
         for item in conf.get("difficulty_level", []):
             name, rows, cols, nums = item.split()
-            result[name] = {
-                "rows": int(rows),
-                "cols": int(cols),
-                "nums": int(nums),
-            }
+            result[name] = GameSpec(int(rows), int(cols), int(nums))
 
         return result
 
@@ -85,50 +86,61 @@ class MinesweeperPlugin(Star):
     async def start_minesweeper(
         self,
         event: AstrMessageEvent,
-        level: str | None = None,
+        level: str = "",
         skin_index: int | None = None,
     ):
-        """开始扫雷 <初级/中级/高级> <皮肤序号>"""
         sid = event.session_id
 
         if self.game_mgr.is_running(sid):
             yield event.plain_result("你已经在进行扫雷游戏了")
             return
-        level = level or self.default_level
-        preset = self.level_preset.get(level)
-        if not preset:
+
+        spec = self.level_preset.get(level, self.default_preset)
+        if level and level not in self.level_preset:
             yield event.plain_result(f"难度仅支持：{list(self.level_preset.keys())}")
             return
-        rows = preset["rows"]
-        cols = preset["cols"]
-        nums = preset["nums"]
+
         skin_name = (
             self.skin_mgr.get_skin_by_index(skin_index - 1)
             if skin_index
             else self.config["default_skin"]
         )
-        skin = self.skin_mgr.load(skin_name, rows, cols)
+        skin = self.skin_mgr.load(skin_name, spec)
 
         renderer = MineSweeperRenderer(
-            row=rows,
-            column=cols,
-            mine_num=nums,
+            spec=spec,
             skin=skin,
             font_path=str(self.font_path),
         )
-        mine_sweeper = MineSweeper(rows, cols, nums, renderer)
 
-        session = self.game_mgr.create(sid, mine_sweeper)
+        game = MineSweeper(spec, renderer)
+        self.game_mgr.create(sid, game)
+
+        def send_board():
+            img_bytes = game.draw()
+            img_path = self._save_img_bytes(event, img_bytes)
+            asyncio.run_coroutine_threadsafe(
+                self.sender.send_img_replace_last(event, img_path), self.loop # type: ignore
+            )
+
+        game.on_send_board(send_board)
+
+        if self.config["use_gui"] and detect_desktop():
+            threading.Thread(
+                target=start_gui,
+                args=(game,),
+                daemon=True,
+            ).start()
 
         yield event.chain_result(
             [
                 Plain("扫雷游戏开始！"),
-                Image.fromBytes(session.game.draw()),
+                Image.fromBytes(game.draw()),
                 Plain(
-                    "a1b2c3 —— 挖开格子(无需前缀)\n"
-                    "标雷c4  —— 标记地雷\n"
-                    "雷盘 —— 查看当前雷盘\n"
-                    "结束扫雷  —— 结束扫雷游戏"
+                    "a1b2c3 —— 挖开格子\n"
+                    "标雷 c4 —— 标记地雷\n"
+                    "雷盘 —— 查看棋盘\n"
+                    "结束扫雷 —— 结束游戏"
                 ),
             ]
         )
@@ -143,41 +155,48 @@ class MinesweeperPlugin(Star):
 
     @filter.regex(r"^雷盘$")
     async def show_minesweeper(self, event: AstrMessageEvent):
-        """查看当前扫雷棋盘"""
-        session = self.game_mgr.get(event.session_id)
-        if not session:
+        game = self.game_mgr.get(event.session_id)
+        if not game:
             return
-        img = session.game.draw()
-        yield event.chain_result([Image.fromBytes(img)])
+
+        yield event.chain_result([Image.fromBytes(game.draw())])
 
     @filter.regex(r"^([a-zA-Z][0-9]+)(\s*[a-zA-Z][0-9]+)*$")
     async def open_minesweeper(self, event: AstrMessageEvent):
-        """挖雷命令：支持批量 <A1B2C3>"""
-        session = self.game_mgr.get(event.session_id)
-        if not session:
+        game = self.game_mgr.get(event.session_id)
+        if not game:
             return
 
         positions = re.findall(r"[a-zA-Z][0-9]+", event.message_str)
-        if not positions:
-            return
-
         msgs = []
+
         for pos in positions:
-            result = session.open(pos)
-            if result.message:
-                msgs.append(result.message)
-            if result.game_over:
+            xy = parse_position(pos)
+            if not xy:
+                msgs.append(f"位置 {pos} 不合法")
+                continue
+
+            res = game.open(*xy)
+
+            if res == OpenResult.OUT:
+                msgs.append(f"{pos} 超出边界")
+            elif res == OpenResult.FAIL:
+                msgs.append("很遗憾，游戏失败")
+            elif res == OpenResult.WIN:
+                msgs.append("恭喜你获得游戏胜利！")
+
+            if game.is_over:
                 self.game_mgr.stop(event.session_id)
                 break
-        if len(msgs) > 0:
+
+        if msgs:
             yield event.plain_result("\n".join(msgs))
 
-        img = session.game.draw()
-        img_path = self._save_img_bytes(event ,img)
+        img_path = self._save_img_bytes(event, game.draw())
         await self.sender.send_img_replace_last(event, img_path)
 
         if (
-            session.game.fail
+            game.is_fail
             and isinstance(event, AiocqhttpMessageEvent)
             and self.config["ban_time"] > 0
         ):
@@ -185,22 +204,32 @@ class MinesweeperPlugin(Star):
 
     @filter.regex(r"^标雷(\s*[a-zA-Z][0-9]+)+$")
     async def mark_minesweeper(self, event: AstrMessageEvent):
-        session = self.game_mgr.get(event.session_id)
-        if not session:
+        game = self.game_mgr.get(event.session_id)
+        if not game:
             return
 
         positions = re.findall(r"[a-zA-Z][0-9]+", event.message_str)
-        if not positions:
-            return
-
         msgs = []
+
         for pos in positions:
-            result = session.mark(pos)
-            if result.message:
-                msgs.append(result.message)
-        if len(msgs) > 0:
+            xy = parse_position(pos)
+            if not xy:
+                msgs.append(f"{pos} 不合法")
+                continue
+
+            res = game.mark(*xy)
+
+            if res == MarkResult.OUT:
+                msgs.append(f"{pos} 超出边界")
+            elif res == MarkResult.OPENED:
+                msgs.append(f"{pos} 已挖开，不能标记")
+            elif res == MarkResult.WIN:
+                msgs.append("恭喜你获得游戏胜利！")
+                self.game_mgr.stop(event.session_id)
+                break
+
+        if msgs:
             yield event.plain_result("\n".join(msgs))
 
-        img = session.game.draw()
-        img_path = self._save_img_bytes(event, img)
+        img_path = self._save_img_bytes(event, game.draw())
         await self.sender.send_img_replace_last(event, img_path)
