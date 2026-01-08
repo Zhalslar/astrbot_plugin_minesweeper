@@ -19,6 +19,10 @@ if __name__ == "__main__":
 from core.gui import start_gui
 
 
+# Default skin to use for GUI
+DEFAULT_SKIN = "winxp"
+
+
 def main():
     """
     启动扫雷游戏 GUI
@@ -79,7 +83,7 @@ def main():
     print()
 
     # Start GUI
-    start_gui(row=row, column=col, mine_num=mines, skin_name="default")
+    start_gui(row=row, column=col, mine_num=mines, skin_name=DEFAULT_SKIN)
 
 
 if __name__ == "__main__":

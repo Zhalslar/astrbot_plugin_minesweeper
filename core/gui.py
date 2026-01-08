@@ -139,6 +139,10 @@ class MineSweeperGUI:
 
         return None
 
+    def _position_to_coordinate(self, row: int, col: int) -> str:
+        """Convert tile position (row, col) to coordinate string like 'a1'"""
+        return f"{chr(row + ord('a'))}{col + 1}"
+
     def _check_face_button_click(self, x: int, y: int) -> bool:
         """Check if the face button was clicked"""
         # Face button is centered horizontally at y=15*4 (after scaling)
@@ -178,7 +182,7 @@ class MineSweeperGUI:
         row, col = pos
 
         # Open the tile
-        result = self.session.open(f"{chr(row + ord('a'))}{col + 1}")
+        result = self.session.open(self._position_to_coordinate(row, col))
 
         # Update display
         self._update_display()
@@ -203,7 +207,7 @@ class MineSweeperGUI:
         row, col = pos
 
         # Mark/unmark the tile
-        self.session.mark(f"{chr(row + ord('a'))}{col + 1}")
+        self.session.mark(self._position_to_coordinate(row, col))
 
         # Update display
         self._update_display()
