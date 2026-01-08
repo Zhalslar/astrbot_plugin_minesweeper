@@ -2,7 +2,6 @@
 import time
 from collections.abc import Iterator
 from io import BytesIO
-from pathlib import Path
 
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image as IMG
@@ -20,7 +19,7 @@ class MineSweeperRenderer:
         column: int,
         mine_num: int,
         skin: Skin,
-        font_dir: Path | None = None,
+        font_path: str,
         scale: int = 4,
     ):
         self.row = row
@@ -28,11 +27,8 @@ class MineSweeperRenderer:
         self.mine_num = mine_num
         self.scale = scale
         self.skin = skin
-        self.font_path = font_dir or Path(
-            "data/plugins/astrbot_plugin_minesweeper/font.ttf"
-        )
         self.font = ImageFont.truetype(
-            font=str(self.font_path),
+            font=font_path,
             size=7 * self.scale,
             encoding="utf-8",
         )

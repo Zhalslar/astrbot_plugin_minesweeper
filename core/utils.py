@@ -20,6 +20,7 @@ def parse_position(pos: str) -> tuple[int, int] | None:
     y = int(m.group(2)) - 1
     return x, y
 
+
 async def set_group_ban(event: AiocqhttpMessageEvent, ban_time: int):
     """检测违禁词并撤回消息"""
     try:
