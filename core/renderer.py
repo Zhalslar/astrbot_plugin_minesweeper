@@ -28,9 +28,9 @@ class MineSweeperRenderer:
             encoding="utf-8",
         )
         # GUI
-        self.tile_size = skin.numbers[0].width * 4  # scale = 4
-        self.board_offset_x = int(12 * 4)  # 12 pixels offset * scale
-        self.board_offset_y = int(55 * 4)  # 55 pixels offset * scale
+        self.tile_size = self.skin.numbers[0].width * self.scale
+        self.board_offset_x = int(12 * self.scale)
+        self.board_offset_y = int(55 * self.scale)
 
     # ========= 对外唯一入口 =========
     def render(
