@@ -16,9 +16,7 @@ class GameActionResult:
     """
     一次操作后的结果
     """
-
     message: str = ""
-    need_render: bool = True
     game_over: bool = False
 
 
@@ -43,8 +41,9 @@ class GameSession:
         if res == OpenResult.OUT:
             return GameActionResult(f"位置 {pos_str} 超出边界")
 
+        # 静默忽略重复点击
         if res == OpenResult.DUP:
-            return GameActionResult(f"位置 {pos_str} 已被挖开")
+            return GameActionResult()
 
         if res in (OpenResult.WIN, OpenResult.FAIL):
             msg = (
@@ -69,23 +68,17 @@ class GameSession:
         if res == MarkResult.OPENED:
             return GameActionResult(f"位置 {pos_str} 已被挖开，不能标记")
 
-        if res == MarkResult.WIN:
-            return GameActionResult("恭喜你获得游戏胜利！", game_over=True)
-
         return GameActionResult()
 
 
 class GameManager:
     """
     统一管理多个游戏会话
-    key 一般为 user_id / session_id
+    key 为 session_id
     """
 
     def __init__(self):
         self.sessions: dict[str, GameSession] = {}
-
-
-    # ---------- 生命周期 ----------
 
     def create(self, key: str, game: MineSweeper) -> GameSession:
         session = GameSession(game)

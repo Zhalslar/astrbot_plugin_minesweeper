@@ -8,20 +8,25 @@ from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
 
 class MessageSender:
     """
-    会话级“覆盖发送”工具：
-    - 同一 session 只保留最后一条消息
+    会话 + 用户级“覆盖发送”工具：
+    - 同一 session + 同一用户 只保留最后一条消息
     - 新消息发送前自动撤回上一条
     """
 
     def __init__(self, config: AstrBotConfig):
         self.config = config
-        # session_id -> last message_id
+        # key(session_id:uid) -> last message_id
         self._last_message_id: dict[str, int] = {}
 
     @staticmethod
-    async def _send_msg(
-        event: AiocqhttpMessageEvent, payloads: dict
-    ) -> int | None:
+    def _make_key(event: AiocqhttpMessageEvent) -> str:
+        """
+        session + sender 作为唯一键
+        """
+        return f"{event.session_id}:{event.get_sender_id()}"
+
+    @staticmethod
+    async def _send_msg(event: AiocqhttpMessageEvent, payloads: dict) -> int | None:
         """
         发送消息并返回 message_id
         """
@@ -36,10 +41,10 @@ class MessageSender:
 
     async def _recall_last_message(self, event: AiocqhttpMessageEvent):
         """
-        撤回当前 session 上一次发送的消息（若存在）
+        撤回当前 session + 用户 上一次发送的消息（若存在）
         """
-        sid = event.session_id
-        last_message_id = self._last_message_id.get(sid)
+        key = self._make_key(event)
+        last_message_id = self._last_message_id.get(key)
 
         if not last_message_id:
             return
@@ -50,13 +55,13 @@ class MessageSender:
             # 已被撤回 / 超时 / 权限不足等情况，直接忽略
             pass
         finally:
-            self._last_message_id.pop(sid, None)
+            self._last_message_id.pop(key, None)
 
     async def send_img_replace_last(self, event: AstrMessageEvent, image_path: str):
         """
-        发送图片，并替换（撤回）同 session 上一次发送的消息
+        发送图片，并替换（撤回）同 session + 同用户 上一次发送的消息
         """
-        # 仅 aiocqhttp 支持 message_id 撤回，其他按框架方法发送
+        # 非 aiocqhttp 平台：直接发，不做撤回
         if not isinstance(event, AiocqhttpMessageEvent):
             await event.send(event.chain_result([Image.fromFileSystem(image_path)]))
             return
@@ -70,6 +75,5 @@ class MessageSender:
 
         # 3. 记录 message_id
         if message_id:
-            self._last_message_id[event.session_id] = message_id
-
-
+            key = self._make_key(event)
+            self._last_message_id[key] = message_id

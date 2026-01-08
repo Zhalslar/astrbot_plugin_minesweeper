@@ -19,8 +19,13 @@ class SkinManager:
     def __init__(self, skins_dir: Path):
         self.skins_dir = skins_dir
 
-        self._skin_names = self._scan_skins()
+        self._skin_names = []
         self._skin_cache: dict[tuple[str, int, int], Skin] = {}
+
+    async def initialize(self):
+        """初始化"""
+        names = self._scan_skins()
+        self._skin_names.extend(names)
 
     def _scan_skins(self) -> list[str]:
         """皮肤发现"""
