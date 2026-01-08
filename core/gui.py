@@ -6,7 +6,6 @@ Allows playing the game with mouse clicks directly on screen
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
-from typing import Callable
 
 from PIL import Image, ImageTk
 
