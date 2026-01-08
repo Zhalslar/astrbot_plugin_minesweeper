@@ -42,9 +42,12 @@ class MineSweeperGUI:
         skins_dir = Path(__file__).parent.parent / "skins"
         self.skin_mgr = SkinManager(skins_dir)
         # Initialize skin manager synchronously for GUI
-        # Note: SkinManager uses _scan_skins() internally which is fine for GUI usage
+        # The async initialize() just calls _scan_skins() internally,
+        # so we replicate that behavior synchronously here for tkinter
         if not self.skin_mgr.skin_list:
-            self.skin_mgr._skin_names.extend(self.skin_mgr._scan_skins())
+            # Scan for available skins if not already loaded
+            skin_names = self.skin_mgr._scan_skins()
+            self.skin_mgr._skin_names.extend(skin_names)
         self.font_path = Path(__file__).parent.parent / "font.ttf"
 
         # Create canvas for displaying the game
