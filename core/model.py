@@ -30,3 +30,10 @@ class Tile:
     marked: bool = False
     boom: bool = False
     count: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class GameSpec:
+    rows: int
+    cols: int
+    mines: int

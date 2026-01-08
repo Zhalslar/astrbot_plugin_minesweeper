@@ -25,7 +25,7 @@
         ],
         "default": "winxp"
     },
-    "difficulty_level": { 
+    "difficulty_level": {
         "description": "扫雷难度设置",
         "hint": "格式为：名称 行数 列数 雷数。空格隔开每个参数。用户未指定难度时默认使用第一个难度",
         "type": "list",
@@ -45,5 +45,11 @@
             "step": 1
         },
         "default": 300
+    },
+    "use_gui": {
+        "description": "是否使用GUI",
+        "hint": "使用后，可通过桌面窗口用鼠标玩扫雷",
+        "type": "bool",
+        "default": false
     }
 }

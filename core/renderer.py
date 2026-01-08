@@ -7,24 +7,19 @@ from PIL import ImageDraw, ImageFont
 from PIL.Image import Image as IMG
 from PIL.Image import Resampling
 
-from .model import GameState, Tile
+from .model import GameSpec, GameState, Tile
 from .skin import Skin
 
 
 class MineSweeperRenderer:
     def __init__(
         self,
-        *,
-        row: int,
-        column: int,
-        mine_num: int,
+        spec: GameSpec,
         skin: Skin,
         font_path: str,
         scale: int = 4,
     ):
-        self.row = row
-        self.column = column
-        self.mine_num = mine_num
+        self.spec = spec
         self.scale = scale
         self.skin = skin
         self.font = ImageFont.truetype(
@@ -32,6 +27,10 @@ class MineSweeperRenderer:
             size=7 * self.scale,
             encoding="utf-8",
         )
+        # GUI
+        self.tile_size = self.skin.numbers[0].width * self.scale
+        self.board_offset_x = int(12 * self.scale)
+        self.board_offset_y = int(55 * self.scale)
 
     # ========= 对外唯一入口 =========
     def render(
@@ -41,6 +40,7 @@ class MineSweeperRenderer:
         state: GameState,
         start_time: float,
     ) -> bytes:
+
         bg = self.skin.background.copy()
 
         self._draw_face(bg, state)
@@ -86,7 +86,7 @@ class MineSweeperRenderer:
 
     def _draw_counts(self, bg: IMG, tiles: list[list[Tile]]):
         marked = sum(1 for t in self._all_tiles(tiles) if t.marked)
-        mine_left = self.mine_num - marked
+        mine_left = self.spec.mines - marked
         nums = f"{mine_left:03d}"[:3]
 
         def digit_img(ch: str):
@@ -109,8 +109,8 @@ class MineSweeperRenderer:
             bg.paste(img, (x, y))
 
     def _draw_tiles(self, bg: IMG, tiles: list[list[Tile]]):
-        for i in range(self.row):
-            for j in range(self.column):
+        for i in range(self.spec.rows):
+            for j in range(self.spec.cols):
                 t = tiles[i][j]
 
                 if t.is_open:
@@ -139,8 +139,8 @@ class MineSweeperRenderer:
 
         draw = ImageDraw.Draw(bg)
 
-        for i in range(self.row):
-            for j in range(self.column):
+        for i in range(self.spec.rows):
+            for j in range(self.spec.cols):
                 t = tiles[i][j]
                 if t.is_open or t.marked:
                     continue
