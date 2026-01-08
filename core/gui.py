@@ -4,6 +4,7 @@ Allows playing the game with mouse clicks directly on screen
 """
 
 import tkinter as tk
+from io import BytesIO
 from pathlib import Path
 from tkinter import messagebox
 
@@ -41,7 +42,9 @@ class MineSweeperGUI:
         skins_dir = Path(__file__).parent.parent / "skins"
         self.skin_mgr = SkinManager(skins_dir)
         # Initialize skin manager synchronously for GUI
-        self.skin_mgr._skin_names.extend(self.skin_mgr._scan_skins())
+        # Note: SkinManager uses _scan_skins() internally which is fine for GUI usage
+        if not self.skin_mgr.skin_list:
+            self.skin_mgr._skin_names.extend(self.skin_mgr._scan_skins())
         self.font_path = Path(__file__).parent.parent / "font.ttf"
 
         # Create canvas for displaying the game
@@ -104,7 +107,6 @@ class MineSweeperGUI:
         img_bytes = self.session.game.draw()
 
         # Convert to PIL Image
-        from io import BytesIO
         pil_img = Image.open(BytesIO(img_bytes))
 
         # Convert to PhotoImage for tkinter
