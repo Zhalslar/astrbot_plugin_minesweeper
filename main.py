@@ -16,7 +16,6 @@ from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
 from astrbot.core.star.star_tools import StarTools
 
 from .core.game import GameManager, MineSweeper
-from .core.gui import start_gui
 from .core.model import GameSpec, MarkResult, OpenResult
 from .core.renderer import MineSweeperRenderer
 from .core.skin import SkinManager
@@ -82,6 +81,7 @@ class MinesweeperPlugin(Star):
         fpath.write_bytes(img_bytes)
         return str(fpath.absolute())
 
+
     @filter.command("扫雷", alias={"开始扫雷"})
     async def start_minesweeper(
         self,
@@ -126,6 +126,7 @@ class MinesweeperPlugin(Star):
         game.on_send_board(send_board)
 
         if self.config["use_gui"] and detect_desktop():
+            from .core.gui import start_gui
             threading.Thread(
                 target=start_gui,
                 args=(game,),
