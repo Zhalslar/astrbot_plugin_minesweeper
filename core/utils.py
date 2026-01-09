@@ -4,7 +4,6 @@
 import os
 import re
 import sys
-import tkinter
 
 from astrbot.api import logger
 from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
@@ -26,6 +25,7 @@ def detect_desktop() -> bool:
 
     # ---------- 通用兜底 ----------
     try:
+        import tkinter
         root = tkinter.Tk()
         root.withdraw()
         root.update()
