@@ -1,6 +1,8 @@
 # config.py
 from __future__ import annotations
 
+import re
+
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Any, get_type_hints
@@ -52,12 +54,15 @@ class PluginConfig(ConfigNode):
     difficulty_level: list[str]
     ban_time: int
     use_gui: bool
+    mark_shortcuts: list[str]
+    sweep_shortcuts: list[str]
 
     _plugin_name = "astrbot_plugin_minesweeper"
 
     def __init__(self, cfg: AstrBotConfig, context: Context):
         super().__init__(cfg)
         self.context = context
+        self.astrbot_config = cfg
 
         self.data_dir = StarTools.get_data_dir(self._plugin_name)
         self.plugin_dir = Path(get_astrbot_plugin_path()) / self._plugin_name
@@ -66,9 +71,16 @@ class PluginConfig(ConfigNode):
         self.skins_dir = self.plugin_dir / "skins"
         self.font_path = self.plugin_dir / "font.ttf"
 
+        logger.debug(f"[扫雷配置] plugin_dir={self.plugin_dir}")
+        logger.debug(f"[扫雷配置] skins_dir={self.skins_dir}")
+        logger.debug(f"[扫雷配置] skins_dir 存在={self.skins_dir.exists()}")
+
         self.level_mapping: dict[str, GameSpec] = self._parse_difficulty_level()
         self.level_keys = list(self.level_mapping.keys())
         self.default_preset = self.level_mapping[self.level_keys[0]]
+
+        self.mark_pattern = self._build_mark_pattern()
+        self.sweep_pattern = self._build_sweep_pattern()
 
     def _parse_difficulty_level(self) -> dict[str, GameSpec]:
         result = {}
@@ -84,3 +96,17 @@ class PluginConfig(ConfigNode):
 
     def get_spec(self, name: str) -> GameSpec:
         return self.level_mapping.get(name) or self.default_preset
+
+    @staticmethod
+    def _build_pattern(shortcuts: list[str], keyword: str) -> str:
+        """通用：构建操作前缀正则模式"""
+        if not shortcuts:
+            return keyword
+        escaped = [re.escape(s) for s in shortcuts]
+        return f"(?:{'|'.join(escaped)}|{re.escape(keyword)})"
+
+    def _build_mark_pattern(self) -> str:
+        return self._build_pattern(self.mark_shortcuts, "标雷")
+
+    def _build_sweep_pattern(self) -> str:
+        return self._build_pattern(self.sweep_shortcuts, "清扫")

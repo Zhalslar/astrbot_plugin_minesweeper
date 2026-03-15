@@ -9,6 +9,7 @@ from .model import (
     GameState,
     MarkResult,
     OpenResult,
+    SweepResult,
     Tile,
 )
 from .renderer import MineSweeperRenderer
@@ -70,7 +71,6 @@ class MineSweeper:
     def on_send_board(self, cb: Callable[[], None]):
         self._send_board_listeners.append(cb)
 
-
     def request_send_board(self):
         for cb in list(self._send_board_listeners):
             cb()
@@ -97,6 +97,10 @@ class MineSweeper:
             tile = self.tiles[x][y]
 
             if tile.is_open:
+                return OpenResult.DUP
+
+            # 已标记的地块无法被点击
+            if tile.marked:
                 return OpenResult.DUP
 
             tile.is_open = True
@@ -139,6 +143,63 @@ class MineSweeper:
                 return MarkResult.WIN
         self._notify()
         return None
+
+    def sweep(self, x: int, y: int) -> SweepResult:
+        """
+        清扫操作（中键）
+        当格子周围标记的雷数等于格子数字时，自动挖开周围未标记的格子
+        """
+        with self._lock:
+            if not self._is_valid(x, y):
+                return SweepResult.OUT
+
+            tile = self.tiles[x][y]
+
+            # 格子必须已挖开才能清扫
+            if not tile.is_open:
+                return SweepResult.NOT_OPENED
+
+            # 检查周围 8 个格子
+            marked_count = 0
+            neighbors = []
+            for dx, dy in self._neighbors():
+                nx, ny = x + dx, y + dy
+                if self._is_valid(nx, ny):
+                    neighbor = self.tiles[nx][ny]
+                    neighbors.append((nx, ny, neighbor))
+                    if neighbor.marked:
+                        marked_count += 1
+
+            # 标记数必须等于格子数字才能清扫
+            if marked_count != tile.count:
+                return SweepResult.CONDITION_NOT_MET
+
+            # 挖开所有未标记的邻居（使用与 open() 相同的逻辑）
+            sweep_count = 0
+            for nx, ny, neighbor in neighbors:
+                if not neighbor.is_open and not neighbor.marked:
+                    neighbor.is_open = True
+                    sweep_count += 1
+
+                    if neighbor.is_mine:
+                        neighbor.boom = True
+                        self.state = GameState.FAIL
+                        self._reveal_mines()
+                        self._notify()
+                        return SweepResult.FAIL
+
+                    # 如果是空白格（count == 0），递归展开
+                    if neighbor.count == 0:
+                        self._spread(nx, ny)
+
+            # 检查是否胜利
+            if self._check_win():
+                self.state = GameState.WIN
+                self._reveal_mines()
+                return SweepResult.WIN
+
+        self._notify()
+        return SweepResult.SUCCESS if sweep_count > 0 else SweepResult.CONDITION_NOT_MET
 
     # ========= 内部实现 =========
 

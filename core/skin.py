@@ -66,7 +66,15 @@ class SkinManager:
         return skin
 
     def _load_skin_impl(self, skin_name: str, spec: GameSpec) -> Skin:
-        image = Image.open(self.skins_dir / f"{skin_name}.bmp").convert("RGBA")
+        skin_path = self.skins_dir / f"{skin_name}.bmp"
+
+        if not skin_path.exists():
+            raise FileNotFoundError(f"皮肤文件不存在：{skin_path}")
+
+        try:
+            image = Image.open(skin_path).convert("RGBA")
+        except Exception as e:
+            raise RuntimeError(f"无法加载皮肤图片 {skin_path}: {e}")
 
         def cut(box):
             return image.crop(box)

@@ -67,8 +67,6 @@ class MineSweeperRenderer:
         for row in tiles:
             yield from row
 
-
-
     # ========= 具体绘制 =========
 
     def _draw_face(self, bg: IMG, state: GameState):
@@ -129,7 +127,6 @@ class MineSweeperRenderer:
                 bg.paste(img, (x, y))
 
     def _draw_label(self, bg: IMG, tiles: list[list[Tile]]):
-
 
         tile_w = self.skin.numbers[0].width * self.scale
         tile_h = self.skin.numbers[0].height * self.scale

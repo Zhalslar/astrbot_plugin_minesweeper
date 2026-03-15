@@ -3,7 +3,6 @@ Windows GUI for Minesweeper (View + Controller only)
 窗口缩放时棋盘等比缩放（修复首帧灰屏）
 """
 
-
 from io import BytesIO
 
 from PIL import Image, ImageTk
@@ -19,6 +18,7 @@ class MineSweeperGUI:
         self.spec = game.spec
 
         import tkinter as tk
+
         # ========= Window =========
         self.root = tk.Tk()
         self.root.title("扫雷游戏 - Minesweeper")
@@ -150,6 +150,7 @@ class MineSweeperGUI:
 
         if res and self.game.is_over:
             from tkinter import messagebox
+
             messagebox.showinfo(
                 "游戏结束",
                 "恭喜你获得游戏胜利！"
@@ -169,6 +170,7 @@ class MineSweeperGUI:
 
         if self.game.state == GameState.WIN:
             from tkinter import messagebox
+
             messagebox.showinfo("游戏结束", "恭喜你获得游戏胜利！")
 
     # ================= Run =================
