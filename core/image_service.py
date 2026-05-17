@@ -1,4 +1,5 @@
 from pathlib import Path
+import base64
 
 from astrbot.api.event import AstrMessageEvent
 from astrbot.core.config.astrbot_config import AstrBotConfig
@@ -65,8 +66,13 @@ class ImageService:
         await self._recall_last_message(event)
 
         # 再发送新图片
+        image_file = Path(image_path)
+        image_bytes = image_file.read_bytes()
+        image_b64_bytes = base64.b64encode(image_bytes)
+        image_b64_str = str(image_b64_bytes, "utf-8")
         payloads = {
-            "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}]
+            # "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}]
+            "message": [{"type": "image", "data": {"file": f"base64://{image_b64_str}"}}]
         }
         message_id = await self._send_msg(event, payloads)
         if message_id:
