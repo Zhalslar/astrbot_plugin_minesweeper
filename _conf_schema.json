@@ -57,7 +57,7 @@
     },
     "ban_time": {
         "description": "失败禁言时长",
-        "hint": "单位为秒，游戏失败时，将禁言玩家（有权限时才生效），此处定义禁言时长",
+        "hint": "单位为秒，游戏失败时禁言踩雷的玩家（有权限时才生效），此处定义禁言时长",
         "type": "int",
         "slider": {
             "min": 0,
@@ -66,27 +66,16 @@
         },
         "default": 300
     },
-    "use_gui": {
-        "description": "是否使用 GUI",
-        "hint": "使用后，可通过桌面窗口用鼠标玩扫雷",
-        "type": "bool",
-        "default": false
+    "mark_prefix": {
+        "description": "标雷前缀",
+        "hint": "用于标记地雷的前缀符号，例如'表示单引号可以触发标雷",
+        "type": "string",
+        "default": "'"
     },
-    "mark_shortcuts": {
-        "description": "标雷快捷键",
-        "hint": "用于标记地雷的前缀符号，支持多个符号，例如 ['\\'', '\"'] 表示单引号和双引号都可以标雷",
-        "type": "list",
-        "default": [
-            "'",
-            "\""
-        ]
-    },
-    "sweep_shortcuts": {
-        "description": "清扫快捷键",
-        "hint": "用于清扫（中键）操作的前缀符号，支持多个符号，例如 ['#'] 表示#号可以触发清扫",
-        "type": "list",
-        "default": [
-            "#"
-        ]
+    "sweep_prefix": {
+        "description": "清扫前缀",
+        "hint": "用于清扫（中键）操作的前缀符号，支持多个符号，例如'#'表示#号可以触发清扫",
+        "type": "string",
+        "default": "#"
     }
 }

@@ -23,14 +23,12 @@ class MarkResult(Enum):
 
 
 class SweepResult(Enum):
-    """清扫操作结果"""
-
-    OUT = 0  # 超出边界
-    NOT_OPENED = 1  # 格子未挖开
-    CONDITION_NOT_MET = 2  # 不满足清扫条件
-    SUCCESS = 3  # 成功清扫
-    WIN = 4  # 清扫后胜利
-    FAIL = 5  # 清扫后踩雷
+    OUT = 0
+    NOT_OPENED = 1
+    CONDITION_NOT_MET = 2
+    SUCCESS = 3
+    WIN = 4
+    FAIL = 5
 
 
 @dataclass

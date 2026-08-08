@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Minesweeper</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header id="toolbar" class="toolbar" hidden>
+        <button id="home" class="home-button"></button>
+        <details id="session" class="session-picker">
+          <summary id="session-summary"></summary>
+          <div id="session-menu" class="session-menu" role="listbox"></div>
+        </details>
+        <button id="restart-session" hidden></button>
+        <button id="push-board" class="icon-button" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3.5 11.5 20 4l-7.5 16-2-6.5-7-2Zm7.1.1 2.1 2.1 3.6-7.6-7.8 3.6 2.1 1.9Z" />
+          </svg>
+        </button>
+        <button id="open-mode" class="mode-button"></button>
+        <button id="mark-mode" class="mode-button"></button>
+        <button id="sweep-mode" class="mode-button"></button>
+        <span class="stats" aria-live="polite">
+          <span id="mine-count"></span>
+          <span>/</span>
+          <span id="opened-count"></span>
+          <span>/</span>
+          <span id="elapsed"></span>
+        </span>
+      </header>
+
+      <section class="game-area">
+        <div id="empty-state" class="empty-state">
+          <div class="empty-controls">
+            <select id="difficulty"></select>
+            <button id="start" class="primary"></button>
+          </div>
+          <div class="help">
+            <p id="help-pc"></p>
+            <p id="help-mobile"></p>
+          </div>
+        </div>
+        <div id="board-frame" class="board-frame hidden">
+          <div id="board" class="board" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <p id="message" class="message" role="status"></p>
+      <div id="game-result" class="result-modal" hidden>
+        <div class="result-dialog" role="dialog" aria-modal="true">
+          <h2 id="result-title"></h2>
+          <p id="result-summary"></p>
+          <p id="result-stats"></p>
+          <div class="result-actions">
+            <button id="result-close"></button>
+            <button id="result-new" class="primary"></button>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

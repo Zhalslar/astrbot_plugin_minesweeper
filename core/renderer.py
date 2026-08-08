@@ -27,25 +27,21 @@ class MineSweeperRenderer:
             size=7 * self.scale,
             encoding="utf-8",
         )
-        # GUI
-        self.tile_size = self.skin.numbers[0].width * self.scale
-        self.board_offset_x = int(12 * self.scale)
-        self.board_offset_y = int(55 * self.scale)
 
-    # ========= 对外唯一入口 =========
     def render(
         self,
         *,
         tiles: list[list[Tile]],
         state: GameState,
         start_time: float,
+        end_time: float | None = None,
     ) -> bytes:
 
         bg = self.skin.background.copy()
 
         self._draw_face(bg, state)
         self._draw_counts(bg, tiles)
-        self._draw_time(bg, start_time)
+        self._draw_time(bg, start_time, end_time)
         self._draw_tiles(bg, tiles)
 
         bg = bg.resize(
@@ -60,14 +56,10 @@ class MineSweeperRenderer:
         output.seek(0)
         return output.getvalue()
 
-    # ========= 基础工具 =========
-
     @staticmethod
     def _all_tiles(tiles: list[list[Tile]]) -> Iterator[Tile]:
         for row in tiles:
             yield from row
-
-    # ========= 具体绘制 =========
 
     def _draw_face(self, bg: IMG, state: GameState):
         if state == GameState.WIN:
@@ -96,8 +88,8 @@ class MineSweeperRenderer:
             y = 17
             bg.paste(img, (x, y))
 
-    def _draw_time(self, bg: IMG, start_time: float):
-        passed = int(time.time() - start_time)
+    def _draw_time(self, bg: IMG, start_time: float, end_time: float | None = None):
+        passed = int((end_time or time.time()) - start_time)
         nums = f"{passed:03d}"[-3:]
 
         for i, ch in enumerate(reversed(nums)):

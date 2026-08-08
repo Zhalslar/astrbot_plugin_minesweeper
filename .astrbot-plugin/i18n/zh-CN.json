@@ -1,0 +1,36 @@
+{
+  "pages": {
+    "dashboard": {
+      "title": "扫雷",
+      "session": "会话",
+      "difficulty": "难度",
+      "start": "开始",
+      "refresh": "刷新",
+      "open": "挖开",
+      "mark": "标记",
+      "sweep": "清扫",
+      "stop": "结束",
+      "state": "状态",
+      "mines": "剩余雷数",
+      "opened": "已打开",
+      "noGame": "未选择游戏",
+      "empty": "暂无游戏",
+      "disconnected": "连接已断开",
+      "selectSession": "选择会话",
+      "elapsed": "用时",
+      "helpPc": "左键挖开，右键标记，中键或点击已挖开的格子进行清扫",
+      "helpMobile": "使用下方按钮进行挖开、标记和清扫",
+      "close": "关闭",
+      "newGame": "再来一局",
+      "winTitle": "🎉 恭喜通关",
+      "failTitle": "💥 游戏结束",
+      "winSummary": "🏆 本局完成得很棒！",
+      "failSummary": "💣 踩到地雷了，再试一次吧",
+     "home": "主页",
+      "pushBoard": "推送棋盘",
+      "pushSuccess": "棋盘已推送",
+     "gameName": "扫雷游戏",
+      "restartSession": "重新开始"
+    }
+  }
+}

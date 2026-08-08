@@ -1,0 +1,36 @@
+{
+  "pages": {
+    "dashboard": {
+      "title": "Minesweeper",
+      "session": "Session",
+      "difficulty": "Difficulty",
+      "start": "Start",
+      "refresh": "Refresh",
+      "mark": "Mark",
+      "sweep": "Sweep",
+      "stop": "Stop",
+      "state": "State",
+      "mines": "Mines left",
+      "opened": "Opened",
+      "noGame": "No game",
+      "empty": "No games",
+      "disconnected": "Disconnected",
+      "open": "Open",
+      "selectSession": "Select session",
+      "elapsed": "Time",
+      "helpPc": "Left click to open, right click to mark, middle click or click an open cell to sweep.",
+      "helpMobile": "Use the buttons below to open, mark, or sweep.",
+      "close": "Close",
+      "newGame": "New game",
+      "winTitle": "🎉 You win",
+      "failTitle": "💥 Game over",
+      "winSummary": "🏆 Well done!",
+      "failSummary": "💣 Better luck next time.",
+     "home": "Home",
+      "pushBoard": "Push board",
+      "pushSuccess": "Board pushed",
+     "gameName": "Minesweeper game ",
+      "restartSession": "Restart"
+    }
+  }
+}
