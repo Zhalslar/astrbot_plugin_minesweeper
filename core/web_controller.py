@@ -162,7 +162,6 @@ class WebController:
         game = self.game_service.get(session_id)
         if game is None:
             return error_response("game not found", status_code=404)
-        print(session_id)
         sent = await self.context.send_message(
             session_id, MessageChain([Image.fromBytes(game.draw())])
         )
