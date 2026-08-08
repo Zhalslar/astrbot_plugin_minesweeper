@@ -90,7 +90,7 @@ class GameService:
             while True:
                 try:
                     payload = await asyncio.wait_for(queue.get(), timeout=15)
-                except TimeoutError:
+                except asyncio.TimeoutError:
                     yield ": keep-alive\n\n"
                     continue
                 if payload is None:
