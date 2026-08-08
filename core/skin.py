@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from PIL import Image
 from PIL.Image import Image as IMG
 
-from .model import GameSpec
 from .config import PluginConfig
+from .model import GameSpec
 
 
 @dataclass
@@ -26,12 +26,10 @@ class SkinManager:
         self._skin_cache: dict[tuple[str, int, int], Skin] = {}
 
     async def initialize(self):
-        """初始化"""
         names = self._scan_skins()
         self._skin_names.extend(names)
 
     def _scan_skins(self) -> list[str]:
-        """皮肤发现"""
         if not self.skins_dir.exists():
             return []
         return [
@@ -42,21 +40,17 @@ class SkinManager:
 
     @property
     def skin_list(self) -> list[str]:
-        """皮肤列表"""
         return self._skin_names
 
     def get_skin_by_index(self, index: int) -> str:
-        """皮肤索引 (超出范围时取第一个)"""
         if index < 0 or index >= len(self._skin_names):
             return self._skin_names[0]
         return self._skin_names[index]
 
     def get_random_skin(self) -> str:
-        """随机皮肤"""
         return random.choice(self._skin_names)
 
     def load(self, skin_name: str, spec: GameSpec) -> Skin:
-        """皮肤加载（带缓存）"""
         key = (skin_name, spec.rows, spec.cols)
         if key in self._skin_cache:
             return self._skin_cache[key]
@@ -69,12 +63,12 @@ class SkinManager:
         skin_path = self.skins_dir / f"{skin_name}.bmp"
 
         if not skin_path.exists():
-            raise FileNotFoundError(f"皮肤文件不存在：{skin_path}")
+            raise FileNotFoundError(f"skin file not exist：{skin_path}")
 
         try:
             image = Image.open(skin_path).convert("RGBA")
         except Exception as e:
-            raise RuntimeError(f"无法加载皮肤图片 {skin_path}: {e}")
+            raise RuntimeError(f"unable to load skin picture {skin_path}: {e}")
 
         def cut(box):
             return image.crop(box)
@@ -89,7 +83,6 @@ class SkinManager:
         return Skin(numbers, icons, digits, faces, background)
 
     def _build_background(self, image: Image.Image, spec: GameSpec) -> Image.Image:
-        """背景拼接"""
         w, h = spec.cols, spec.rows
         background = Image.new("RGBA", (w * 16 + 24, h * 16 + 66), "silver")
 

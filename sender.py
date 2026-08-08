@@ -59,18 +59,14 @@ class MessageSender:
 
     async def send_img_replace_last(self, event: AstrMessageEvent, image_path: str):
         """
-        发送图片，并替换（撤回）同 session + 同用户 上一次发送的消息
+        发送图片，并撤回同 session + 同用户 上一次发送的消息
         """
-        # 非 aiocqhttp 平台：直接发，不做撤回
         if not isinstance(event, AiocqhttpMessageEvent):
             await event.send(event.chain_result([Image.fromFileSystem(image_path)]))
             return
-
-        # 1. 发送新消息
         payloads = {"message": [{"type": "image", "data": {"file": image_path}}]}
         message_id = await self._send_msg(event, payloads)
 
-        # 2. 撤回上一条
         await self._recall_last_message(event)
 
         # 3. 记录 message_id

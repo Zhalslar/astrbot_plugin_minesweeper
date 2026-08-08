@@ -1,8 +1,7 @@
-from pathlib import Path
 import base64
+from pathlib import Path
 
 from astrbot.api.event import AstrMessageEvent
-from astrbot.core.config.astrbot_config import AstrBotConfig
 from astrbot.core.message.components import Image
 from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
     AiocqhttpMessageEvent,
@@ -10,19 +9,11 @@ from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
 
 
 class ImageService:
-    """
-    图片缓存与发送服务
-    - 管理临时图片缓存
-    - 支持消息替换发送（撤回上一条后发送新图）
-    """
-
-    def __init__(self, config: AstrBotConfig, cache_dir: Path):
-        self.config = config
+    def __init__(self, cache_dir: Path):
         self.cache_dir = cache_dir
         self._last_message_id: dict[str, int] = {}
 
     def save_cache(self, event: AstrMessageEvent, img_bytes: bytes) -> str:
-        """保存图片到缓存目录，返回绝对路径"""
         sid = event.session_id
         uid = event.get_sender_id()
         fname = f"{sid}_{uid}.png"
@@ -57,22 +48,18 @@ class ImageService:
             self._last_message_id.pop(key, None)
 
     async def send_with_replace(self, event: AstrMessageEvent, image_path: str):
-        """发送图片并替换（撤回上一条后发送新图）"""
         if not isinstance(event, AiocqhttpMessageEvent):
             await event.send(event.chain_result([Image.fromFileSystem(image_path)]))
             return
-
-        # 先撤回上一条消息
         await self._recall_last_message(event)
-
-        # 再发送新图片
         image_file = Path(image_path)
         image_bytes = image_file.read_bytes()
         image_b64_bytes = base64.b64encode(image_bytes)
         image_b64_str = str(image_b64_bytes, "utf-8")
         payloads = {
-            # "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}]
-            "message": [{"type": "image", "data": {"file": f"base64://{image_b64_str}"}}]
+            "message": [
+                {"type": "image", "data": {"file": f"base64://{image_b64_str}"}}
+            ]
         }
         message_id = await self._send_msg(event, payloads)
         if message_id:

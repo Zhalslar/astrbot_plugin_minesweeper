@@ -16,19 +16,22 @@ from .renderer import MineSweeperRenderer
 
 
 class MineSweeper:
-    """
-    扫雷核心逻辑（纯规则 / 纯状态）
-    """
+    """mine sweeper game core"""
 
     def __init__(
         self,
         spec: GameSpec,
         renderer: MineSweeperRenderer,
+        display_name: str = "",
+        can_push: bool = False,
     ):
         self.spec = spec
+        self.display_name = display_name
+        self.can_push = can_push
         self.renderer = renderer
 
         self.start_time = time.time()
+        self.end_time: float | None = None
         self.state = GameState.PREPARE
         self.tiles = [[Tile() for _ in range(spec.cols)] for _ in range(spec.rows)]
 
@@ -37,7 +40,7 @@ class MineSweeper:
 
         self._lock = threading.Lock()
 
-    # ========= 状态 =========
+    # ========= state =========
 
     @property
     def is_win(self) -> bool:
@@ -55,7 +58,7 @@ class MineSweeper:
     def is_gaming(self) -> bool:
         return self.state == GameState.GAMING
 
-    # ========= 监听 =========
+    # ========= listen =========
 
     def add_listener(self, cb: Callable[[], None]):
         self._listeners.append(cb)
@@ -75,19 +78,55 @@ class MineSweeper:
         for cb in list(self._send_board_listeners):
             cb()
 
-    # ========= 对外 =========
+    def reset(self) -> None:
+        with self._lock:
+            self.start_time = time.time()
+            self.end_time = None
+            self.state = GameState.PREPARE
+            self.tiles = [
+                [Tile() for _ in range(self.spec.cols)] for _ in range(self.spec.rows)
+            ]
+        self._notify()
+
+    # ========= draw =========
 
     def draw(self) -> bytes:
-        """
-        渲染当前棋盘
-        """
         return self.renderer.render(
             tiles=self.tiles,
             state=self.state,
             start_time=self.start_time,
+            end_time=self.end_time,
         )
 
-    # ========= 游戏逻辑 =========
+    def snapshot(self) -> dict:
+        """Return a JSON-serializable snapshot of the current board."""
+        with self._lock:
+            elapsed = int((self.end_time or time.time()) - self.start_time)
+            return {
+                "state": self.state.name.lower(),
+                "display_name": self.display_name,
+                "elapsed": max(0, elapsed),
+                "rows": self.spec.rows,
+                "cols": self.spec.cols,
+                "mines": self.spec.mines,
+                "marked": sum(1 for row in self.tiles for tile in row if tile.marked),
+                "opened": sum(1 for row in self.tiles for tile in row if tile.is_open),
+                "tiles": [
+                    [
+                        {
+                            "open": tile.is_open,
+                            "marked": tile.marked,
+                            "mine": tile.is_mine if self.is_over else False,
+                            "boom": tile.boom,
+                            "count": tile.count if tile.is_open else 0,
+                        }
+                        for tile in row
+                    ]
+                    for row in self.tiles
+                ],
+            }
+
+    # ========= game logic =========
 
     def open(self, x: int, y: int) -> OpenResult | None:
         with self._lock:
@@ -99,19 +138,18 @@ class MineSweeper:
             if tile.is_open:
                 return OpenResult.DUP
 
-            # 已标记的地块无法被点击
             if tile.marked:
                 return OpenResult.DUP
 
             tile.is_open = True
 
-            # 首次点击才布雷
             if self.state == GameState.PREPARE:
                 self._set_mines(exclude=(x, y))
 
             if tile.is_mine:
                 tile.boom = True
                 self.state = GameState.FAIL
+                self.end_time = time.time()
                 self._reveal_mines()
                 return OpenResult.FAIL
 
@@ -120,6 +158,7 @@ class MineSweeper:
 
             if self._check_win():
                 self.state = GameState.WIN
+                self.end_time = time.time()
                 self._reveal_mines()
                 return OpenResult.WIN
         self._notify()
@@ -139,27 +178,22 @@ class MineSweeper:
 
             if self._check_mark_win():
                 self.state = GameState.WIN
+                self.end_time = time.time()
                 self._reveal_mines()
                 return MarkResult.WIN
         self._notify()
         return None
 
     def sweep(self, x: int, y: int) -> SweepResult:
-        """
-        清扫操作（中键）
-        当格子周围标记的雷数等于格子数字时，自动挖开周围未标记的格子
-        """
         with self._lock:
             if not self._is_valid(x, y):
                 return SweepResult.OUT
 
             tile = self.tiles[x][y]
 
-            # 格子必须已挖开才能清扫
             if not tile.is_open:
                 return SweepResult.NOT_OPENED
 
-            # 检查周围 8 个格子
             marked_count = 0
             neighbors = []
             for dx, dy in self._neighbors():
@@ -170,11 +204,9 @@ class MineSweeper:
                     if neighbor.marked:
                         marked_count += 1
 
-            # 标记数必须等于格子数字才能清扫
             if marked_count != tile.count:
                 return SweepResult.CONDITION_NOT_MET
 
-            # 挖开所有未标记的邻居（使用与 open() 相同的逻辑）
             sweep_count = 0
             for nx, ny, neighbor in neighbors:
                 if not neighbor.is_open and not neighbor.marked:
@@ -184,33 +216,30 @@ class MineSweeper:
                     if neighbor.is_mine:
                         neighbor.boom = True
                         self.state = GameState.FAIL
+                        self.end_time = time.time()
                         self._reveal_mines()
                         self._notify()
                         return SweepResult.FAIL
 
-                    # 如果是空白格（count == 0），递归展开
                     if neighbor.count == 0:
                         self._spread(nx, ny)
 
-            # 检查是否胜利
             if self._check_win():
                 self.state = GameState.WIN
+                self.end_time = time.time()
                 self._reveal_mines()
                 return SweepResult.WIN
 
         self._notify()
         return SweepResult.SUCCESS if sweep_count > 0 else SweepResult.CONDITION_NOT_MET
 
-    # ========= 内部实现 =========
+    # ========= internal implementation =========
 
     def _all_tiles(self) -> Iterator[Tile]:
         for row in self.tiles:
             yield from row
 
     def _set_mines(self, exclude: tuple[int, int]):
-        """
-        布雷，保证首次点击不会踩雷
-        """
         ex, ey = exclude
         count = 0
 
@@ -284,25 +313,3 @@ class MineSweeper:
 
     def _is_valid(self, x: int, y: int) -> bool:
         return 0 <= x < self.spec.rows and 0 <= y < self.spec.cols
-
-
-class GameManager:
-    """
-    多扫雷实例管理
-    """
-
-    def __init__(self):
-        self.games: dict[str, MineSweeper] = {}
-
-    def create(self, key: str, game: MineSweeper) -> MineSweeper:
-        self.games[key] = game
-        return game
-
-    def get(self, key: str) -> MineSweeper | None:
-        return self.games.get(key)
-
-    def stop(self, key: str):
-        self.games.pop(key, None)
-
-    def is_running(self, key: str) -> bool:
-        return key in self.games

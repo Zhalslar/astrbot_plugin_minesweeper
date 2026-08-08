@@ -1,8 +1,6 @@
-# config.py
 from __future__ import annotations
 
 import re
-
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Any, get_type_hints
@@ -10,15 +8,15 @@ from typing import Any, get_type_hints
 from astrbot.api import logger
 from astrbot.core.config.astrbot_config import AstrBotConfig
 from astrbot.core.star.context import Context
-from astrbot.core.star.star_tools import StarTools
-from astrbot.core.utils.astrbot_path import get_astrbot_plugin_path
+from astrbot.core.utils.astrbot_path import (
+    get_astrbot_plugin_data_path,
+    get_astrbot_plugin_path,
+)
 
 from .model import GameSpec
 
 
 class ConfigNode:
-    """配置节点：dict → 强类型属性访问（极简版）"""
-
     _SCHEMA_CACHE: dict[type, dict[str, type]] = {}
 
     @classmethod
@@ -32,7 +30,7 @@ class ConfigNode:
                 continue
             if hasattr(self.__class__, key):
                 continue
-            logger.warning(f"[config:{self.__class__.__name__}] 缺少字段: {key}")
+            logger.warning(f"[config:{self.__class__.__name__}] miss key: {key}")
 
     def __getattr__(self, key: str) -> Any:
         if key in self._schema():
@@ -46,16 +44,12 @@ class ConfigNode:
         object.__setattr__(self, key, value)
 
 
-# ============ 插件自定义配置 ==================
-
-
 class PluginConfig(ConfigNode):
     default_skin: str
     difficulty_level: list[str]
     ban_time: int
-    use_gui: bool
-    mark_shortcuts: list[str]
-    sweep_shortcuts: list[str]
+    mark_prefix: str
+    sweep_prefix: str
 
     _plugin_name = "astrbot_plugin_minesweeper"
 
@@ -64,23 +58,20 @@ class PluginConfig(ConfigNode):
         self.context = context
         self.astrbot_config = cfg
 
-        self.data_dir = StarTools.get_data_dir(self._plugin_name)
+        self.data_dir = Path(get_astrbot_plugin_data_path()) / self._plugin_name
         self.plugin_dir = Path(get_astrbot_plugin_path()) / self._plugin_name
         self.cache_dir = self.data_dir / "cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.skins_dir = self.plugin_dir / "skins"
         self.font_path = self.plugin_dir / "font.ttf"
 
-        logger.debug(f"[扫雷配置] plugin_dir={self.plugin_dir}")
-        logger.debug(f"[扫雷配置] skins_dir={self.skins_dir}")
-        logger.debug(f"[扫雷配置] skins_dir 存在={self.skins_dir.exists()}")
-
         self.level_mapping: dict[str, GameSpec] = self._parse_difficulty_level()
         self.level_keys = list(self.level_mapping.keys())
-        self.default_preset = self.level_mapping[self.level_keys[0]]
+        self.default_difficulty =  self.level_keys[0]
+        self.default_preset = self.level_mapping[self.default_difficulty]
 
-        self.mark_pattern = self._build_mark_pattern()
-        self.sweep_pattern = self._build_sweep_pattern()
+        self._mark_regex = re.compile(rf"^{re.escape(self.mark_prefix)}\s*[a-zA-Z]")
+        self._sweep_regex = re.compile(rf"^{re.escape(self.sweep_prefix)}\s*[a-zA-Z]")
 
     def _parse_difficulty_level(self) -> dict[str, GameSpec]:
         result = {}
@@ -97,16 +88,44 @@ class PluginConfig(ConfigNode):
     def get_spec(self, name: str) -> GameSpec:
         return self.level_mapping.get(name) or self.default_preset
 
-    @staticmethod
-    def _build_pattern(shortcuts: list[str], keyword: str) -> str:
-        """通用：构建操作前缀正则模式"""
-        if not shortcuts:
-            return keyword
-        escaped = [re.escape(s) for s in shortcuts]
-        return f"(?:{'|'.join(escaped)}|{re.escape(keyword)})"
+    async def add_level(
+        self,
+        name: str,
+        rows: int | str | None,
+        cols: int | str | None,
+        mines: int | str | None,
+    ) -> str | None:
+        if not name or any(char.isspace() for char in name):
+            return "难度名称不能为空或包含空格"
+        if self.is_supported_level(name):
+            return f"难度 {name} 已存在"
 
-    def _build_mark_pattern(self) -> str:
-        return self._build_pattern(self.mark_shortcuts, "标雷")
+        if (
+            not isinstance(rows, int)
+            or not isinstance(cols, int)
+            or not isinstance(mines, int)
+        ):
+            return "行数、列数和雷数必须为整数"
+        if rows <= 0 or cols <= 0:
+            return "行数和列数必须大于 0"
+        if mines <= 0:
+            return "雷数必须大于 0"
+        if mines >= rows * cols:
+            return "雷数必须小于格子总数"
 
-    def _build_sweep_pattern(self) -> str:
-        return self._build_pattern(self.sweep_shortcuts, "清扫")
+        spec = GameSpec(rows, cols, mines)
+        self.difficulty_level.append(f"{name} {rows} {cols} {mines}")
+        self.level_mapping[name] = spec
+        self.level_keys.append(name)
+        await self.astrbot_config.save_config_async()
+        return None
+
+    def _get_mark_prefix(self, text: str) -> str | None:
+        if self.mark_prefix and text.startswith(self.mark_prefix):
+            return self.mark_prefix
+        return None
+
+    def _get_sweep_prefix(self, text: str) -> str | None:
+        if self.sweep_prefix and text.startswith(self.sweep_prefix):
+            return self.sweep_prefix
+        return None
