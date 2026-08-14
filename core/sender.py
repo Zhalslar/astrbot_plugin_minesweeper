@@ -9,8 +9,8 @@ from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
 class MessageSender:
     """
     会话 + 用户级“覆盖发送”工具：
-    - 同一 session + 同一用户 只保留最后一条消息
-    - 新消息发送前自动撤回上一条
+    - 同一会话 + 同一用户 只保留最后一条消息
+    - 新消息发送时自动撤回上一条
     """
 
     def __init__(self, config: AstrBotConfig):
@@ -21,9 +21,9 @@ class MessageSender:
     @staticmethod
     def _make_key(event: AiocqhttpMessageEvent) -> str:
         """
-        session + sender 作为唯一键
+        umo + sender 作为唯一键
         """
-        return f"{event.session_id}:{event.get_sender_id()}"
+        return f"{event.unified_msg_origin}:{event.get_sender_id()}"
 
     @staticmethod
     async def _send_msg(event: AiocqhttpMessageEvent, payloads: dict) -> int | None:

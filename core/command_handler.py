@@ -144,15 +144,17 @@ class CommandHandler:
 
     def stop_game(self, event: AstrMessageEvent):
         uid = event.get_sender_id()
-        if not self.game_service.is_running(event.session_id):
+        umo = event.unified_msg_origin
+        if not self.game_service.is_running(umo):
             logger.debug(f"[扫雷] 用户 {uid} 尝试结束不存在的游戏")
             return "当前没有进行中的扫雷游戏"
-        self.game_service.stop(event.session_id)
+        self.game_service.stop(umo)
         logger.info(f"[扫雷] 用户 {uid} 结束游戏")
         return "已结束扫雷游戏"
 
     async def show_board(self, event: AstrMessageEvent):
-        game = self.game_service.get(event.session_id)
+        umo = event.unified_msg_origin
+        game = self.game_service.get(umo)
         if not game:
             logger.debug(f"[扫雷] 用户 {event.get_sender_id()} 查看不存在的棋盘")
             return None
@@ -163,7 +165,8 @@ class CommandHandler:
         self, event: AstrMessageEvent, game: MineSweeper | None = None
     ) -> bool:
         if game is None:
-            game = self.game_service.get(event.session_id)
+            umo = event.unified_msg_origin
+            game = self.game_service.get(umo)
         if not game:
             return False
         img_path = self.image_service.save_cache(event, game.draw())
@@ -178,7 +181,8 @@ class CommandHandler:
         *,
         defer_output: bool = False,
     ) -> tuple[bool, MineSweeper | None, list[str]]:
-        game = self.game_service.get(event.session_id)
+        umo = event.unified_msg_origin
+        game = self.game_service.get(umo)
         if not game:
             return False, None, []
 
@@ -196,7 +200,7 @@ class CommandHandler:
             for pos in _expand_position_token(token) or []:
                 x = ord(pos[0]) - ord("a")
                 y = int(pos[1:]) - 1
-                result = self.game_service.apply(event.session_id, action, x, y)
+                result = self.game_service.apply(umo, action, x, y)
                 message = None
 
                 match result:
