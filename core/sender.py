@@ -4,7 +4,6 @@ import botpy.message
 from botpy.http import Route
 
 from astrbot.api.event import AstrMessageEvent, MessageChain
-from astrbot.core.config.astrbot_config import AstrBotConfig
 from astrbot.core.message.components import Image
 from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
     AiocqhttpMessageEvent,
@@ -15,9 +14,8 @@ from astrbot.core.platform.sources.qqofficial.qqofficial_message_event import (
 
 
 class MessageSender:
-    def __init__(self, cache_dir: Path, config: AstrBotConfig | None = None):
+    def __init__(self, cache_dir: Path):
         self.cache_dir = cache_dir
-        self.config = config
         self._last_message_id: dict[str, str | int] = {}
 
     @staticmethod
