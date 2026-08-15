@@ -10,8 +10,8 @@ from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
 from .config import PluginConfig
 from .game import MineSweeper
 from .game_service import GameService
-from .image_service import ImageService
 from .model import MarkResult, OpenResult, SweepResult
+from .sender import MessageSender
 
 _POSITION_PATTERN = re.compile(
     r"[a-zA-Z]\d+-[a-zA-Z]\d+|[a-zA-Z](?:-[a-zA-Z])?\d+(?:-\d+)?|[a-zA-Z]-[a-zA-Z]\d+"
@@ -80,12 +80,16 @@ class CommandHandler:
     def __init__(
         self,
         cfg: PluginConfig,
-        image_service: ImageService,
+        sender: MessageSender,
         game_service: GameService,
     ):
         self.cfg = cfg
         self.game_service = game_service
-        self.image_service = image_service
+        self.sender = sender
+
+    @staticmethod
+    def _game_key(event: AstrMessageEvent) -> str:
+        return event.unified_msg_origin
 
     async def start_game(
         self,
@@ -93,7 +97,7 @@ class CommandHandler:
         difficulty: str,
         skin_index: int | None,
     ):
-        umo = event.unified_msg_origin
+        umo = self._game_key(event)
         uid = event.get_sender_id()
         show_level = not difficulty
         difficulty = difficulty or self.cfg.default_difficulty
@@ -144,7 +148,7 @@ class CommandHandler:
 
     def stop_game(self, event: AstrMessageEvent):
         uid = event.get_sender_id()
-        umo = event.unified_msg_origin
+        umo = self._game_key(event)
         if not self.game_service.is_running(umo):
             logger.debug(f"[扫雷] 用户 {uid} 尝试结束不存在的游戏")
             return "当前没有进行中的扫雷游戏"
@@ -153,8 +157,7 @@ class CommandHandler:
         return "已结束扫雷游戏"
 
     async def show_board(self, event: AstrMessageEvent):
-        umo = event.unified_msg_origin
-        game = self.game_service.get(umo)
+        game = self.game_service.get(self._game_key(event))
         if not game:
             logger.debug(f"[扫雷] 用户 {event.get_sender_id()} 查看不存在的棋盘")
             return None
@@ -165,12 +168,11 @@ class CommandHandler:
         self, event: AstrMessageEvent, game: MineSweeper | None = None
     ) -> bool:
         if game is None:
-            umo = event.unified_msg_origin
-            game = self.game_service.get(umo)
+            game = self.game_service.get(self._game_key(event))
         if not game:
             return False
-        img_path = self.image_service.save_cache(event, game.draw())
-        await self.image_service.send_with_replace(event, img_path)
+        img_path = self.sender.save_cache(event, game.draw())
+        await self.sender.send_img_replace_last(event, img_path)
         return True
 
     async def _handle_positions(
@@ -181,8 +183,7 @@ class CommandHandler:
         *,
         defer_output: bool = False,
     ) -> tuple[bool, MineSweeper | None, list[str]]:
-        umo = event.unified_msg_origin
-        game = self.game_service.get(umo)
+        game = self.game_service.get(self._game_key(event))
         if not game:
             return False, None, []
 
@@ -200,7 +201,7 @@ class CommandHandler:
             for pos in _expand_position_token(token) or []:
                 x = ord(pos[0]) - ord("a")
                 y = int(pos[1:]) - 1
-                result = self.game_service.apply(umo, action, x, y)
+                result = self.game_service.apply(self._game_key(event), action, x, y)
                 message = None
 
                 match result:
