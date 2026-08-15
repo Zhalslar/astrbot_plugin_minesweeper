@@ -9,7 +9,7 @@ from astrbot.core.platform.astr_message_event import AstrMessageEvent
 from .core.command_handler import CommandHandler
 from .core.config import PluginConfig
 from .core.game_service import GameService
-from .core.image_service import ImageService
+from .core.sender import MessageSender
 from .core.skin import SkinManager
 from .core.web_controller import WebController
 
@@ -20,7 +20,7 @@ class MinesweeperPlugin(Star):
         self.cfg = PluginConfig(config, context)
 
         self.skin_mgr = SkinManager(self.cfg)
-        self.image_service = ImageService(self.cfg.cache_dir)
+        self.sender = MessageSender(self.cfg.cache_dir)
         self.game_service = GameService(self.cfg, self.skin_mgr)
         self.web_controller = WebController(
             context=context,
@@ -30,7 +30,7 @@ class MinesweeperPlugin(Star):
         self.cmd_handler = CommandHandler(
             cfg=self.cfg,
             game_service=self.game_service,
-            image_service=self.image_service,
+            sender=self.sender,
         )
 
     async def initialize(self):

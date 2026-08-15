@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v1.3.1
+
+New Features:
+- 添加 `MessageSender` 工具类，将棋盘图片保存到缓存中，并在包括 QQ 官方机器人和 OneBot 在内的受支持平台上发送这些图片。
+- 支持在平台允许的情况下，按会话和发送者维度，通过回溯上一条消息来替换最近一次发送的棋盘图片。
+
+Enhancements:
+- 重构 `CommandHandler` 和主初始化流程，使其在棋盘渲染与投递上依赖 `MessageSender` 而非 `ImageService`。
+- 在 `CommandHandler` 中通过基于事件来源的统一游戏键，规范游戏查找逻辑。
+- 在新的核心 sender 到位后，移除旧的顶层 sender 模块。
+
 ## v1.3.0
 
 New Features:
