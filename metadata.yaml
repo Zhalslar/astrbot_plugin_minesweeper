@@ -2,7 +2,7 @@ name: astrbot_plugin_minesweeper
 display_name: 扫雷游戏
 desc: 经典的扫雷小游戏
 help: 略
-version: v1.3.0
+version: v1.3.1
 author: Zhalslar
 repo: https://github.com/Zhalslar/astrbot_plugin_minesweeper
 astrbot_version: ">=4.26.1"
